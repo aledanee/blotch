@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ibrahim Blotch</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .navbar {
+            margin-bottom: 20px;
+            background-color: #007bff;
+        }
+        .navbar-brand, .nav-link {
+            color: white !important;
+        }
+        .navbar-brand:hover, .nav-link:hover {
+            color: #ddd !important;
+        }
+        .sidebar-title {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+        .list-group-item {
+            background-color: #f8f9fa;
+            border: none;
+            padding: 10px;
+            font-size: 1rem;
+        }
+        .list-group-item a {
+            text-decoration: none;
+            color: #007bff;
+        }
+        .list-group-item a:hover {
+            color: #0056b3;
+        }
+        .card {
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            border: none;
+        }
+        .card-body {
+            padding: 20px;
+        }
+        .card-title {
+            font-size: 1.25rem;
+            color: #007bff;
+            font-weight: bold;
+        }
+        .card-text {
+            color: #555;
+        }
+        .btn-primary, .btn-secondary {
+            background-color: #007bff;
+            border: none;
+        }
+        .btn-primary:hover, .btn-secondary:hover {
+            background-color: #0056b3;
+        }
+        .footer {
+            background-color: #343a40;
+            color: white;
+            padding: 23px 0;
+        }
+
+        /* Make posts-container scrollable */
+        #posts-container {
+            height: 70vh;
+            overflow-y: scroll;
+        }
+
+        /* Style for right-to-left text direction */
+        .rtl {
+            direction: rtl;
+            text-align: right;
+        }
+
+        /* Style for left-to-right text direction */
+        .ltr {
+            direction: ltr;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="mp.html" onclick="loadHomePage()">Ibrahim Blotch</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Note</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="contact.html">Contact with Me</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container my-5">
+        <div class="row">
+            <!-- Sidebar for Categories -->
+            <div class="col-md-3">
+                <div class="sidebar-title">Categories</div>
+                <ul class="list-group mb-4" id="categories-container">
+                    <!-- Categories will be inserted here -->
+                </ul>
+                <div class="sidebar-title">Top 4 Most Liked Posts</div>
+                <ul class="list-group" id="top-posts-container">
+                    <!-- Top 4 most liked posts will be inserted here -->
+                </ul>
+            </div>
+
+            <!-- Posts Content -->
+            <div class="col-md-9">
+                <div class="row" id="posts-container">
+                    <!-- Dynamic content will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer text-center">
+        <p>&copy; 2024 Ibrahim Blotch. All Rights Reserved.</p>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- JavaScript to manage dynamic content -->
+    <script>
+        // Function to load the home page with all posts and categories
+        async function loadHomePage() {
+            await loadCategories();
+            await loadPosts();
+            await loadTopPosts();
+        }
+
+        // Function to load categories
+        async function loadCategories() {
+            const response = await fetch('http://127.0.0.1:8001/get/categories');
+            const data = await response.json();
+
+            const categoriesContainer = document.getElementById('categories-container');
+            categoriesContainer.innerHTML = ''; // Clear previous content
+
+            data.category.forEach(cat => {
+                const categoryItem = `
+                    <li class="list-group-item">
+                        <a href="#" onclick="loadPostsByCategory('${cat.category}')">${cat.category}</a>
+                    </li>
+                `;
+                categoriesContainer.innerHTML += categoryItem;
+            });
+        }
+
+        // Function to load all posts
+       async function loadPosts() {
+    const response = await fetch('http://127.0.0.1:8000/get/posts');
+    const data = await response.json();
+
+    const postsContainer = document.getElementById('posts-container');
+    postsContainer.innerHTML = ''; // Clear previous content
+
+    data.posts.forEach(post => {
+        const excerpt = post.content.length > 100 ? post.content.substring(0, 100) + '...' : post.content;
+
+        const postCard = `
+                        <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">${post.title}</h5>
+                        <p class="card-text">${excerpt}</p>
+                        <div class="d-flex">
+                            <p class="card-text me-3"><strong>Category:</strong> ${post.category}</p>
+                            <!---<p class="card-text me-3"><strong>Author:</strong> ${post.aname}</p> -->
+                            <p class="card-text me-3"><strong>Date:</strong> ${post.date}</p>
+
+                            <p class="card-text"><strong>Likes:</strong> <span id="likes-count-${post.id}">${post.likes}</span></p>
+                        </div>
+                        <button class="btn btn-secondary mt-2" onclick="loadPostDetails(${post.id})">Read More</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        postsContainer.innerHTML += postCard;
+    });
+}
+
+
+        // Function to load posts by category
+        async function loadPostsByCategory(category) {
+            const response = await fetch('http://127.0.0.1:8000/get/posts');
+            const data = await response.json();
+
+            const postsContainer = document.getElementById('posts-container');
+            postsContainer.innerHTML = ''; // Clear previous content
+
+            data.posts.forEach(post => {
+                if (post.category === category) {
+                    const excerpt = post.content.length > 100 ? post.content.substring(0, 100) + '...' : post.content;
+
+                    const postCard = `
+                        <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">${post.title}</h5>
+                        <p class="card-text">${excerpt}</p>
+                        <div class="d-flex">
+                            <p class="card-text me-3"><strong>Category:</strong> ${post.category}</p>
+                            <!---<p class="card-text me-3"><strong>Author:</strong> ${post.aname}</p> -->
+                            <p class="card-text me-3"><strong>Date:</strong> ${post.date}</p>
+
+                            <p class="card-text"><strong>Likes:</strong> <span id="likes-count-${post.id}">${post.likes}</span></p>
+                        </div>
+                        <button class="btn btn-secondary mt-2" onclick="loadPostDetails(${post.id})">Read More</button>
+                    </div>
+                </div>
+            </div>
+                    `;
+                    postsContainer.innerHTML += postCard;
+                }
+            });
+        }
+
+        // Function to load the details of a single post
+        async function loadPostDetails(postId) {
+            const response = await fetch(`http://127.0.0.1:8000/post/${postId}`);
+            const post = await response.json();
+
+            const postsContainer = document.getElementById('posts-container');
+            postsContainer.innerHTML = ''; // Clear previous content
+
+            // Use marked.js to convert Markdown to HTML
+            const contentHTML = marked.parse(post.content);
+
+            // Determine the direction based on the language (Arabic or English)
+            const directionClass = /[\u0600-\u06FF]/.test(post.content) ? 'rtl' : 'ltr';
+
+            const postDetail = `
+                <div class="card">
+                    <div class="card-body ${directionClass}">
+                        <h5 class="card-title">${post.title}</h5>
+                        <div class="card-text">${contentHTML}</div>
+                        <p class="card-text"><strong>Category:</strong> ${post.category}</p>
+                       <!-- <p class="card-text"><strong>Author:</strong> ${post.aname}</p> --->
+                        <p class="card-text me-3"><strong>Date:</strong> ${post.date}</p>
+
+                        <p class="card-text"><strong>Likes:</strong> <span id="likes-count-${post.id}">${post.likes}</span></p>
+                        <button class="btn btn-primary" onclick="likePost(${post.id})">Like</button>
+                        <div class="mt-3">
+                            <textarea class="form-control" id="comment-${post.id}" placeholder="Add a comment..."></textarea>
+                            <button class="btn btn-secondary mt-2" onclick="addComment(${post.id})">Comment</button>
+                        </div>
+                        <div id="comments-container-${post.id}" class="mt-3">
+                            <h6>Comments:</h6>
+                            <!-- Comments will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            `;
+            postsContainer.innerHTML = postDetail;
+
+            // Fetch and display comments for this post
+            fetchComments(postId);
+        }
+
+        // Function to load the top 4 most liked posts
+        async function loadTopPosts() {
+            const response = await fetch('http://127.0.0.1:8000/get/posts');
+            const data = await response.json();
+
+            // Sort the posts by likes in descending order and get the top 4
+            const topPosts = data.posts.sort((a, b) => b.likes - a.likes).slice(0, 4);
+
+            const topPostsContainer = document.getElementById('top-posts-container');
+            topPostsContainer.innerHTML = ''; // Clear previous content
+
+            topPosts.forEach(post => {
+                const topPostItem = `
+                    <li class="list-group-item">
+                        <a href="#" onclick="loadPostDetails(${post.id})">${post.title} (${post.likes} Likes)</a>
+                    </li>
+                `;
+                topPostsContainer.innerHTML += topPostItem;
+            });
+        }
+
+        // Function to like a post and update the like count
+        async function likePost(postId) {
+            const response = await fetch(`http://127.0.0.1:8000/like/post/${postId}`, { method: 'POST' });
+
+            if (response.ok) {
+                const data = await response.json();
+
+                // Update the like count in the DOM
+                const likesSpan = document.querySelector(`#likes-count-${postId}`);
+                likesSpan.textContent = data.new_likes;
+                loadTopPosts(); // Refresh the top posts section after liking
+            } else {
+                alert("Failed to like the post");
+            }
+        }
+
+        // Function to add a comment to a post
+        async function addComment(postId) {
+            const content = document.getElementById(`comment-${postId}`).value.trim();
+            const commenter = "Anonymous";
+
+            if (content === "") {
+                alert("Comment cannot be empty!");
+                return;
+            }
+
+            const url = `http://127.0.0.1:8000/add/comment?post_id=${postId}&content=${encodeURIComponent(content)}&commenter=${encodeURIComponent(commenter)}`;
+            const response = await fetch(url, { method: 'POST' });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log(data.message); // Log the success message
+                loadPostDetails(postId); // Refresh the post details to display the new comment
+            } else {
+                alert("Failed to add comment");
+            }
+        }
+
+        // Function to fetch and display comments for a post
+        async function fetchComments(postId) {
+            const response = await fetch(`http://127.0.0.1:8000/post/${postId}/comments`);
+            const data = await response.json();
+
+            const commentsContainer = document.getElementById(`comments-container-${postId}`);
+            commentsContainer.innerHTML = '';
+
+            data.comments.forEach(comment => {
+                const commentDiv = document.createElement('div');
+                commentDiv.classList.add('card', 'mb-2');
+                commentDiv.innerHTML = `
+                    <div class="card-body">
+                        <p class="card-text">${comment.content}</p>
+                        <p class="card-text"><small class="text-muted">Commenter: ${comment.commenter}</small></p>
+                    </div>
+                `;
+                commentsContainer.appendChild(commentDiv);
+            });
+        }
+
+        // Load the home page when the page is loaded
+        document.addEventListener('DOMContentLoaded', loadHomePage);
+    </script>
+</body>
+</html>
