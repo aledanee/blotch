@@ -6,14 +6,16 @@ from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from typing import Annotated, List, Optional, Union
+from uuid import uuid4
 
-from app.models.mod import User, Token, TokenData, UserCreate, UserResponse, UserRole, UserUpdate
+from app.models.mod import RefreshToken, User, Token, TokenData, UserCreate, UserResponse, UserRole, UserUpdate
 from app.database.database import get_db
 
 # JWT and OAuth2 configurations
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 99
+REFRESH_TOKEN_EXPIRE_DAYS = 60
 
 # Password context for hashing passwords
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -58,6 +60,17 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+def create_refresh_token(db: Session, user: User):
+    refresh_token = RefreshToken(
+        user_id=user.id,
+        token=str(uuid4()),
+        expires_at=datetime.utcnow() + timedelta(minutes=REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+    db.add(refresh_token)
+    db.commit()
+    db.refresh(refresh_token)
+    return refresh_token.token
+
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -101,8 +114,37 @@ async def login_for_access_token(
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires  # Use email in the token
     )
-    return {"access_token": access_token, "token_type": "bearer"}
-    
+    refresh_token = create_refresh_token(db, user)
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+
+
+@router.post("/token/refresh", response_model=Token)
+async def refresh_access_token(refresh_token: str, db: Session = Depends(get_db)):
+    token_data = db.query(RefreshToken).filter(RefreshToken.token == refresh_token).first()
+
+    if not token_data or token_data.expires_at < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+
+    user = db.query(User).filter(User.id == token_data.user_id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
+    )
+
+    # Optionally, refresh the refresh token as well
+    new_refresh_token = create_refresh_token(db, user)
+
+    return {"access_token": access_token, "refresh_token": new_refresh_token, "token_type": "bearer"}
 
 
 @router.get("/users/me/", response_model=UserResponse)
@@ -231,3 +273,12 @@ async def get_users(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No users found")
 
     return users
+
+
+@router.post("/logout")
+async def logout(refresh_token: str, db: Session = Depends(get_db)):
+    token_data = db.query(RefreshToken).filter(RefreshToken.token == refresh_token).first()
+    if token_data:
+        db.delete(token_data)
+        db.commit()
+    return {"message": "Logged out"}

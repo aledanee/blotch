@@ -19,7 +19,13 @@ def create_like(db: Session, article_id: int, user_id: int):
         # If like exists, remove it (unlike)
         db.delete(existing_like)
         db.commit()
-        return {"message": "Like removed"}
+        return {
+            "id": existing_like.id,
+            "article_id": article_id,
+            "user_id": user_id,
+            "created_at": existing_like.created_at,
+            "message": "Like removed"
+        }
     else:
         # If like does not exist, create a new like
         new_like = Like(article_id=article_id, user_id=user_id, created_at=datetime.utcnow())

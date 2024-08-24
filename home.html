@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blotch Home</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f4f4;
+        }
+        .navbar {
+            background-color: #343a40;
+        }
+        .navbar-brand {
+            color: #ffffff;
+            font-size: 1.5rem;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+        .navbar-brand:hover {
+            color: #f8f9fa;
+        }
+        .navbar-nav .nav-link {
+            color: #ffffff;
+        }
+        .navbar-nav .nav-link:hover {
+            color: #adb5bd;
+        }
+        .navbar-nav .user-name {
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        #sidebar {
+            background-color: #f4f4f4;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        #main-content {
+            padding: 20px;
+            margin-top: 20px;
+            max-height: calc(100vh - 150px);
+            overflow-y: auto;
+        }
+        .category-list {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 0;
+        }
+        .category-item {
+            padding: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .category-item:hover {
+            background-color: #f4f4f4;
+        }
+        .article-list-item {
+            padding: 15px;
+            background-color: #f4f4f4;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .article-list-item:hover {
+            background-color: #ffffff;
+        }
+        .article-list-item h5 {
+            margin-bottom: 10px;
+        }
+        .article-list-item small {
+            color: #6c757d;
+        }
+        .article-detail {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .btn-back {
+            margin-top: 20px;
+        }
+        .navbar-nav .login-register {
+            display: flex;
+            align-items: center;
+        }
+        .navbar-nav .login-register a {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Blotch</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item login-register" id="user-info">
+                        <!-- User information will be dynamically inserted here -->
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-3">
+                <div id="sidebar">
+                    <h5>Search Articles</h5>
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="searchQuery" placeholder="Search..." oninput="searchArticles()">
+                        <button class="btn btn-primary" id="searchButton" onclick="searchArticles()">Search</button>
+                    </div>
+                    
+                    <h5>Categories</h5>
+                    <ul class="list-group category-list mb-3" id="categoryList"></ul>
+                    
+                    <h5>Last Three New Comments</h5>
+                    <ul class="list-group mb-3" id="lastThreeComments"></ul>
+                    
+                    <h5>Last Three Articles</h5>
+                    <ul class="list-group mb-3" id="lastThreeArticles"></ul>
+                    
+                    <h5>Most Liked Article</h5>
+                    <div class="list-group" id="mostLikedArticle"></div>
+                </div>
+                
+            </div>
+            <div class="col-md-9">
+                <div id="main-content">
+                    <div id="articlesList"></div>
+                    <div id="articleDetail" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="loginModalLabel">Login</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="loginForm">
+                        <div class="mb-3">
+                            <label for="loginEmail" class="form-label">Email address</label>
+                            <input type="email" class="form-control" id="loginEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="loginPassword" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="loginPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div class="modal fade" id="registerModal" tabindex="-1" aria-labelledby="registerModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="registerModalLabel">Register</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="registerForm">
+                        <div class="mb-3">
+                            <label for="registerEmail" class="form-label">Email address</label>
+                            <input type="email" class="form-control" id="registerEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="registerUsername" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="registerUsername" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="registerPassword" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="registerPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Register</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const baseURL = "http://127.0.0.1:8001";
+
+        // Function to load categories
+        async function loadCategories() {
+            const response = await fetch(`${baseURL}/v1/categories/`);
+            const categories = await response.json();
+            if (response.ok) {
+                const categoryList = document.getElementById('categoryList');
+                categoryList.innerHTML = '';
+                categories.forEach(category => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item category-item';
+                    li.textContent = category.name;
+                    li.onclick = () => loadArticlesByCategory(category.id);
+                    categoryList.appendChild(li);
+                });
+            } else {
+                alert('Failed to load categories');
+            }
+        }
+
+        // Function to load all articles and display them on the homepage
+        async function loadArticles() {
+            try {
+                const response = await fetch(`${baseURL}/v1/articles/`);
+                const articles = await response.json();
+                if (response.ok) {
+                    renderArticleList(articles);
+                } else {
+                    alert('Failed to load articles');
+                }
+            } catch (error) {
+                console.error('Error loading articles:', error);
+                alert('An error occurred while loading articles.');
+            }
+        }
+
+        // Function to load articles by category
+        async function loadArticlesByCategory(categoryId) {
+            const response = await fetch(`${baseURL}/v1/articles/all?category_id=${categoryId}`);
+            const articles = await response.json();
+            if (response.ok) {
+                renderArticleList(articles);
+            } else {
+                alert('Failed to load articles for this category');
+            }
+        }
+
+        let searchTimeout;
+
+        async function searchArticles() {
+            clearTimeout(searchTimeout); // Clear the previous timeout if the user is still typing
+
+            const query = document.getElementById('searchQuery').value.trim();
+
+            if (!query) {
+                loadArticles(); // Load all articles if the search query is empty
+                return;
+            }
+
+            // Set a timeout to debounce the search request
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`${baseURL}/v1/search/articles/?search=${encodeURIComponent(query)}`);
+                    const articles = await response.json();
+
+                    if (response.ok) {
+                        renderArticleList(articles);
+                    } else {
+                        alert('Failed to search articles');
+                    }
+                } catch (error) {
+                    console.error('Error searching articles:', error);
+                    alert('An error occurred while searching articles.');
+                }
+            }, 300); // 300ms debounce time
+        }
+
+        // Function to render article list
+        async function renderArticleList(articles) {
+            const articlesList = document.getElementById('articlesList');
+            const articleDetail = document.getElementById('articleDetail');
+            articlesList.innerHTML = '';
+            articleDetail.style.display = 'none';
+
+            // Fetch categories to map category IDs to names
+            const categoriesResponse = await fetch(`${baseURL}/v1/categories/`);
+            const categories = await categoriesResponse.json();
+            const categoryMap = categories.reduce((map, category) => {
+                map[category.id] = category.name;
+                return map;
+            }, {});
+
+            // Render each article
+            for (const article of articles) {
+                const div = document.createElement('div');
+                div.className = 'article-list-item';
+
+                // Fetch likes and comments count
+                const likesResponse = await fetch(`${baseURL}/v1/like/articles/${article.id}/likes/`);
+                const likes = await likesResponse.json();
+                const commentsResponse = await fetch(`${baseURL}/v1/comment/articles/${article.id}/comments/`);
+                const comments = await commentsResponse.json();
+
+                div.innerHTML = `
+                    <h5>${article.title}</h5>
+                    <p>${article.text.substring(0, 100)}...</p>
+                    <small>Category: ${categoryMap[article.category_id]} | Date: ${new Date(article.created_at).toLocaleDateString()} | Likes: ${likes.length} | Comments: ${comments.length}</small>
+                    <button class="btn btn-primary btn-sm mt-2" onclick="viewArticle(${article.id})">Read More</button>
+                `;
+                articlesList.appendChild(div);
+            }
+        }
+
+        // Function to view article details
+        async function viewArticle(articleId) {
+            try {
+                // Fetch the article details
+                const articleResponse = await fetch(`${baseURL}/v1/articles/${articleId}`);
+                const article = await articleResponse.json();
+                
+                if (!articleResponse.ok) {
+                    alert('Failed to load article details');
+                    return;
+                }
+
+                // Fetch the categories and map them
+                const categoriesResponse = await fetch(`${baseURL}/v1/categories/`);
+                const categories = await categoriesResponse.json();
+                const categoryMap = categories.reduce((map, category) => {
+                    map[category.id] = category.name;
+                    return map;
+                }, {});
+
+                // Fetch likes and comments count
+                const likesResponse = await fetch(`${baseURL}/v1/like/articles/${article.id}/likes/`);
+                const likes = await likesResponse.json();
+                const commentsResponse = await fetch(`${baseURL}/v1/comment/articles/${article.id}/comments/`);
+                const comments = await commentsResponse.json();
+
+                // Render the article detail view
+                const articlesList = document.getElementById('articlesList');
+                const articleDetail = document.getElementById('articleDetail');
+                articlesList.style.display = 'none';
+                articleDetail.style.display = 'block';
+                articleDetail.innerHTML = `
+                    <h3>${article.title}</h3>
+                    <p>${article.text}</p>
+                    <p><small>Category: ${categoryMap[article.category_id]} | Date: ${new Date(article.created_at).toLocaleDateString()}</small></p>
+                    <p><small>Likes: ${likes.length} | Comments: ${comments.length}</small></p>
+                    <button class="btn btn-success" onclick="likeArticle(${article.id})">Like</button>
+                    <div class="mt-4">
+                        <h5>Comments</h5>
+                        <ul id="commentList" class="list-group"></ul>
+                        <textarea id="commentText" class="form-control mt-3" placeholder="Add a comment..."></textarea>
+                        <button class="btn btn-primary mt-2" onclick="addComment(${article.id})">Submit Comment</button>
+                    </div>
+                    <button class="btn btn-secondary btn-back" onclick="goBackToArticles()">Back to Articles</button>
+                `;
+                loadComments(articleId);
+            } catch (error) {
+                console.error('Error viewing article:', error);
+                alert('An error occurred while loading the article details.');
+            }
+        }
+
+        // Function to load comments
+        async function loadComments(articleId) {
+            const response = await fetch(`${baseURL}/v1/comment/articles/${articleId}/comments/`);
+            const comments = await response.json();
+            if (response.ok) {
+                const commentList = document.getElementById('commentList');
+                commentList.innerHTML = '';
+                comments.forEach(comment => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item';
+                    li.textContent = comment.text;
+                    commentList.appendChild(li);
+                });
+            } else {
+                alert('Failed to load comments');
+            }
+        }
+
+        // Function to add a comment
+        async function addComment(articleId) {
+            const commentText = document.getElementById('commentText').value;
+            if (!commentText) {
+                alert('Please enter a comment');
+                return;
+            }
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('You must be logged in to add a comment.');
+                return;
+            }
+            try {
+                const response = await fetch(`${baseURL}/v1/comment/articles/${articleId}/comments/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: commentText })
+                });
+                if (response.ok) {
+                    document.getElementById('commentText').value = ''; // Clear the comment input
+                    viewArticle(articleId); // Reload the article details to show the new comment
+                } else {
+                    alert('Failed to add comment');
+                }
+            } catch (error) {
+                console.error('Error adding comment:', error);
+                alert('An error occurred while adding the comment.');
+            }
+        }
+
+        // Function to like an article
+        async function likeArticle(articleId) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('You must be logged in to like an article.');
+                return;
+            }
+            try {
+                const response = await fetch(`${baseURL}/v1/like/articles/${articleId}/likes/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                    }
+                });
+                if (response.ok) {
+                    viewArticle(articleId); // Reload the article details to reflect the new like
+                } else {
+                    if (response.status === 401) {
+                        const refreshed = await refreshToken();
+                        if (refreshed) {
+                            likeArticle(articleId); // Retry the like request after refreshing the token
+                        } else {
+                            alert('Session expired. Please log in again.');
+                        }
+                    } else {
+                        alert('Failed to like the article');
+                    }
+                }
+            } catch (error) {
+                console.error('Error liking article:', error);
+                viewArticle(articleId);
+            }
+        }
+
+        // Function to refresh token
+        async function refreshToken() {
+            const refreshToken = localStorage.getItem('refresh_token');
+            try {
+                const response = await fetch(`${baseURL}/v1/token/refresh`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ refresh_token: refreshToken })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to refresh token');
+                }
+
+                const data = await response.json();
+                localStorage.setItem('token', data.access_token);
+                localStorage.setItem('refresh_token', data.refresh_token); // Store new refresh token if provided
+                return true; // Indicate that the token was successfully refreshed
+            } catch (error) {
+                console.error('Error refreshing token:', error);
+                logout(); // Logout and redirect to login
+                return false; // Indicate that the token refresh failed
+            }
+        }
+
+        // Function to load the last three articles and their comments
+        async function loadLastThreeArticlesWithComments() {
+            try {
+                const response = await fetch(`${baseURL}/v1/articles/?limit=3`);
+                const articles = await response.json();
+
+                if (response.ok) {
+                    const lastThreeArticles = document.getElementById('lastThreeArticles');
+                    const lastThreeComments = document.getElementById('lastThreeComments');
+                    lastThreeArticles.innerHTML = '';
+                    lastThreeComments.innerHTML = '';
+
+                    for (const article of articles) {
+                        // Display the article title
+                        const articleLi = document.createElement('li');
+                        articleLi.className = 'list-group-item';
+                        articleLi.textContent = article.title;
+                        articleLi.onclick = () => viewArticle(article.id);
+                        lastThreeArticles.appendChild(articleLi);
+
+                        // Fetch the comments for each article
+                        const commentsResponse = await fetch(`${baseURL}/v1/comment/articles/${article.id}/comments/`);
+                        const comments = await commentsResponse.json();
+
+                        if (commentsResponse.ok && comments.length > 0) {
+                            // Display the latest comment from the article
+                            const commentLi = document.createElement('li');
+                            commentLi.className = 'list-group-item';
+                            commentLi.textContent = `Comment on "${article.title}": ${comments[comments.length - 1].text}`;
+                            lastThreeComments.appendChild(commentLi);
+                        }
+                    }
+                } else {
+                    alert('Failed to load the last three articles');
+                }
+            } catch (error) {
+                console.error('Error loading the last three articles with comments:', error);
+                alert('An error occurred while loading the last three articles with comments.');
+            }
+        }
+
+        // Function to load the most liked article
+        async function loadMostLikedArticle() {
+            try {
+                const response = await fetch(`${baseURL}/v1/articles/?order=likes&limit=1`);
+                const articles = await response.json();
+
+                if (response.ok && articles.length > 0) {
+                    const mostLikedArticleDiv = document.getElementById('mostLikedArticle');
+                    mostLikedArticleDiv.innerHTML = '';
+
+                    const article = articles[0];
+
+                    const articleDiv = document.createElement('div');
+                    articleDiv.className = 'list-group-item';
+                    articleDiv.innerHTML = `<strong>${article.title}</strong> (${article.likes_count} likes)`;
+                    articleDiv.onclick = () => viewArticle(article.id);
+
+                    mostLikedArticleDiv.appendChild(articleDiv);
+                } else {
+                    alert('Failed to load the most liked article');
+                }
+            } catch (error) {
+                console.error('Error loading the most liked article:', error);
+                alert('An error occurred while loading the most liked article.');
+            }
+        }
+
+        // Function to go back to article list
+        function goBackToArticles() {
+            const articlesList = document.getElementById('articlesList');
+            const articleDetail = document.getElementById('articleDetail');
+            articlesList.style.display = 'block';
+            articleDetail.style.display = 'none';
+            loadCategories(); // Reload categories in case they change
+            loadArticles(); // Load all articles on the homepage
+        }
+
+        // Function to handle logout
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            updateNavbar(); // Update the navbar to show "Login" and "Register"
+            alert('Logged out successfully!');
+        }
+
+        // Function to update the navbar based on login status
+        function updateNavbar() {
+            const username = localStorage.getItem('username');
+            const userInfo = document.getElementById('user-info');
+            if (username) {
+                userInfo.innerHTML = `<span class="nav-link user-name">User: ${username}</span><a class="nav-link" href="#" onclick="logout()">Logout</a>`;
+            } else {
+                userInfo.innerHTML = `<a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#loginModal">Login</a> <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#registerModal">Register</a>`;
+            }
+        }
+
+        // Function to handle login
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            const requestData = new URLSearchParams({
+                'username': email,
+                'password': password,
+                'grant_type': 'password'
+            });
+
+            try {
+                const response = await fetch(`${baseURL}/v1/token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: requestData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Login failed');
+                }
+
+                const data = await response.json();
+                localStorage.setItem('token', data.access_token);
+                localStorage.setItem('username', email);
+                localStorage.setItem('refresh_token', data.refresh_token); // Store the refresh token
+                document.getElementById('loginModal').classList.remove('show'); // Close the modal
+                document.querySelector('.modal-backdrop').remove(); // Remove the backdrop
+                updateNavbar(); // Update navbar after login
+               // alert('Login successful!');
+            } catch (error) {
+                alert(`Login failed: ${error.message}`);
+            }
+        });
+
+        // Function to handle registration
+        document.getElementById('registerForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const email = document.getElementById('registerEmail').value;
+            const username = document.getElementById('registerUsername').value;
+            const password = document.getElementById('registerPassword').value;
+
+            try {
+                const response = await fetch(`${baseURL}/v1/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        'email': email,
+                        'username': username,
+                        'password': password
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Registration failed');
+                }
+
+                document.getElementById('registerModal').classList.remove('show'); // Close the modal
+                document.querySelector('.modal-backdrop').remove(); // Remove the backdrop
+                alert('Registration successful! Please log in.');
+            } catch (error) {
+                alert(`Registration failed: ${error.message}`);
+            }
+        });
+        
+
+        // On page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNavbar(); // Update the navbar based on the initial login status
+            loadArticles(); // Load all articles on the homepage
+            loadCategories(); // Load all categories
+            loadLastThreeArticlesWithComments(); // Load last three articles and their latest comments
+            loadMostLikedArticle(); // Load the most liked article
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+</body>
+</html>

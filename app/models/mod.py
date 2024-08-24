@@ -65,6 +65,22 @@ class User(Base):
     comments = relationship("Comment", back_populates="user")
     likes = relationship("Like", back_populates="user")
 
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String, nullable=False, unique=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+
+    user = relationship("User", back_populates="refresh_tokens")
+
+User.refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete")
+
+
 class Category(Base):
     __tablename__ = 'categories'
     id = Column(Integer, primary_key=True, index=True)

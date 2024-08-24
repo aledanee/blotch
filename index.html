@@ -3,177 +3,508 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login and Fetch User Data</title>
+    <title>Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
+            display: flex;
+            min-height: 100vh;
+            flex-direction: column;
+            background-color: #f4f4f4;
+        }
+        #sidebar {
+            min-width: 250px;
+            max-width: 250px;
+            background-color: #343a40;
             padding: 20px;
-            background-color: #f8f9fa;
+            position: fixed;
+            color: #ffffff;
         }
-
-        .container {
-            max-width: 900px;
-            margin: auto;
-        }
-
-        .article {
-            margin-bottom: 20px;
-            padding: 20px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .article img {
-            max-width: 100%;
-            height: auto;
+        #sidebar .btn {
+            width: 100%;
             margin-bottom: 10px;
+            color: #ffffff;
+            background-color: #495057;
+            border-color: #495057;
         }
-
-        .article h2 {
-            font-size: 1.5rem;
+        #sidebar .btn:hover {
+            background-color: #6c757d;
+            border-color: #6c757d;
         }
-
-        .article p {
-            font-size: 1rem;
+        #main-content {
+            margin-left: 270px;
+            padding: 20px;
+            width: 100%;
         }
-
-        .article-info {
+        #username {
+            font-weight: bold;
+            margin-bottom: 30px;
+            font-size: 1.2em;
+            color: #adb5bd;
+        }
+        #content {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+        }
+        .form-label {
+            font-weight: bold;
+        }
+        #alert-box {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: none;
+        }
+        .card-title {
+            font-size: 1.25rem;
+        }
+        .card-text {
             font-size: 0.9rem;
-            color: #6c757d;
-            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Login</h2>
-        <form id="loginForm">
-            <div class="mb-3">
-                <label for="email" class="form-label">Email address</label>
-                <input type="email" class="form-control" id="email" required>
-            </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Login</button>
-        </form>
-
-        <div id="userData" style="margin-top: 20px; display:none;">
-            <h3>User Data</h3>
-            <p><strong>Username:</strong> <span id="username"></span></p>
-        </div>
-
-        <h2>Articles</h2>
-
-        <div class="search">
-            <input type="text" id="searchInput" class="form-control" placeholder="Search for articles...">
-            <button id="searchBtn" class="btn btn-primary mt-2">Search</button>
-        </div>
-
-        <div class="articles" id="articlesContainer" style="margin-top: 20px;"></div>
-
+    <div id="sidebar">
+        <div id="username">User: <span id="user-name">N/A</span></div>
+        <button class="btn" onclick="getUser()">Get User Info</button>
+        <button class="btn" onclick="registerForm()">Register User</button>
+        <button class="btn" onclick="updateUserForm()">Update User</button>
+        <button class="btn" onclick="getCategories()">Get Categories</button>
+        <button class="btn" onclick="createCategoryForm()">Create Category</button>
+        <button class="btn" onclick="getArticles()">Get Articles</button>
+        <button class="btn" onclick="createArticleForm()">Create Article</button>
+        <button class="btn" onclick="searchArticlesForm()">Search Articles</button>
+        <button class="btn btn-danger" onclick="logout()">Logout</button>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script>
-        const apiBaseUrl = 'http://127.0.0.1:8001/v1';  // Make sure apiBaseUrl is declared here
+    <div id="main-content">
+        <h1 class="text-center">Admin Dashboard</h1>
+        <div id="content"></div>
+    </div>
 
-        document.getElementById('loginForm').addEventListener('submit', function (e) {
-            e.preventDefault();
+    <div id="alert-box" class="alert alert-danger" role="alert">
+        <strong>Error:</strong> <span id="alert-message"></span>
+    </div>
+
+    <script>
+        const baseURL = "http://127.0.0.1:8001";
+
+        // Function to generate the login form
+        function loginForm() {
+            document.getElementById('content').innerHTML = `
+                <h2>Login For Access Token</h2>
+                <form onsubmit="login(event)">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+                <hr>
+            `;
+        }
+
+        // Function to handle login and fetch the access token
+        async function login(event) {
+            event.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
 
-            axios.post(`${apiBaseUrl}/token`, new URLSearchParams({
-                username: email,
-                password: password
-            }), {
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
-            })
-            .then(function (response) {
-                const accessToken = response.data.access_token;
-                console.log('Access Token:', accessToken);
+            if (!email || !password) {
+                showAlert('Email and password are required', 'danger');
+                return;
+            }
 
-                // Fetch user data with the obtained access token
-                axios.get(`${apiBaseUrl}/users/me/`, {
+            const requestData = new URLSearchParams({
+                'username': email,  // OAuth uses "username" as the key even if it's an email
+                'password': password,
+                'grant_type': 'password'
+            });
+
+            try {
+                const response = await fetch(`${baseURL}/v1/token`, {
+                    method: 'POST',
                     headers: {
-                        Authorization: `Bearer ${accessToken}`
-                    }
-                })
-                .then(function (response) {
-                    const userData = response.data;
-                    console.log('User Data:', userData);
-
-                    // Display user data on the page
-                    document.getElementById('username').textContent = userData.username;
-                    document.getElementById('userData').style.display = 'block';
-
-                    // Load articles after login
-                    loadArticles(accessToken);
-                })
-                .catch(function (error) {
-                    console.error('Failed to fetch user data:', error);
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: requestData
                 });
-            })
-            .catch(function (error) {
-                console.error('Login failed:', error);
-                alert('Login failed. Please check your email and password.');
-            });
-        });
 
-        function loadArticles(accessToken, query = '') {
-            const url = query ? `${apiBaseUrl}/search/articles?search=${query}` : `${apiBaseUrl}/search/articles`;
-
-            axios.get(url, {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Login failed');
                 }
-            })
-            .then(function (response) {
-                displayArticles(response.data);
-            })
-            .catch(function (error) {
-                console.error('Failed to load articles:', error);
-                alert('Failed to load articles.');
-            });
+
+                const data = await response.json();
+                localStorage.setItem('token', data.access_token);
+                localStorage.setItem('username', email); // Store email as the username
+                document.getElementById('user-name').textContent = email; // Set email in the sidebar
+                showAlert('Login successful!', 'success');
+                showUserOptions();
+            } catch (error) {
+                showAlert(`Login failed: ${error.message}`, 'danger');
+            }
         }
 
-        function displayArticles(articles) {
-            const articlesContainer = document.getElementById('articlesContainer');
-            articlesContainer.innerHTML = '';
+        // Function to show an alert
+        function showAlert(message, type) {
+            const alertBox = document.getElementById('alert-box');
+            const alertMessage = document.getElementById('alert-message');
+            alertMessage.textContent = message;
+            alertBox.className = `alert alert-${type}`;
+            alertBox.style.display = 'block';
 
-            articles.forEach(article => {
-                const articleElement = document.createElement('div');
-                articleElement.className = 'article';
+            setTimeout(() => {
+                alertBox.style.display = 'none';
+            }, 5000);
+        }
 
-                articleElement.innerHTML = `
-                    <h2>${article.title}</h2>
-                    <img src="${article.image_url}" alt="${article.title}">
-                    <p>${article.text.slice(0, 100)}...</p>
-                    <div class="article-info">
-                        <p>Date: ${new Date(article.created_at).toLocaleDateString()}</p>
-                        <p>Category ID: ${article.category_id} | Read Time: ${article.read_time} mins | Views: ${article.views}</p>
+        // Function to generate user options after login
+        function showUserOptions() {
+            document.getElementById('content').innerHTML = `<h2>Welcome, ${localStorage.getItem('username')}</h2>`;
+        }
+
+        // Function to get user info
+        async function getUser() {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${baseURL}/v1/users/me/`, {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                document.getElementById('content').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } else {
+                showAlert('Failed to fetch user info', 'danger');
+            }
+        }
+
+        // Function to generate the registration form
+        function registerForm() {
+            document.getElementById('content').innerHTML = `
+                <h2>Register User</h2>
+                <form onsubmit="register(event)">
+                    <div class="mb-3">
+                        <label for="registerEmail" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="registerEmail" required>
                     </div>
-                    <button class="btn btn-primary" onclick="viewArticle(${article.id})">Read More</button>
-                `;
+                    <div class="mb-3">
+                        <label for="registerUsername" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="registerUsername" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="registerPassword" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="registerPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Register</button>
+                </form>
+            `;
+        }
 
-                articlesContainer.appendChild(articleElement);
+        // Function to handle user registration
+        async function register(event) {
+            event.preventDefault();
+            const email = document.getElementById('registerEmail').value;
+            const username = document.getElementById('registerUsername').value;
+            const password = document.getElementById('registerPassword').value;
+
+            const response = await fetch(`${baseURL}/v1/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'email': email,
+                    'username': username,
+                    'password': password
+                })
             });
+
+            const data = await response.json();
+            if (response.ok) {
+                showAlert('User registered successfully!', 'success');
+            } else {
+                showAlert('Registration failed: ' + data.detail, 'danger');
+            }
         }
 
-        document.getElementById('searchBtn').addEventListener('click', function () {
-            const query = document.getElementById('searchInput').value;
-            const accessToken = localStorage.getItem('access_token');
-            loadArticles(accessToken, query);
-        });
-
-        function viewArticle(articleId) {
-            console.log(`Viewing article with ID: ${articleId}`);
-            // Implement the article detail view here
+        // Function to generate the update user form
+        function updateUserForm() {
+            document.getElementById('content').innerHTML = `
+                <h2>Update User</h2>
+                <form onsubmit="updateUser(event)">
+                    <div class="mb-3">
+                        <label for="updateUsername" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="updateUsername" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="updateEmail" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="updateEmail" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update</button>
+                </form>
+            `;
         }
+
+        // Function to handle user update
+        async function updateUser(event) {
+            event.preventDefault();
+            const token = localStorage.getItem('token');
+            const username = document.getElementById('updateUsername').value;
+            const email = document.getElementById('updateEmail').value;
+
+            const response = await fetch(`${baseURL}/v1/users/`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'username': username,
+                    'email': email
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                showAlert('User updated successfully!', 'success');
+            } else {
+                showAlert('Update failed: ' + data.detail, 'danger');
+            }
+        }
+
+        // Function to get categories
+        async function getCategories() {
+            const response = await fetch(`${baseURL}/v1/categories/`);
+            const data = await response.json();
+            if (response.ok) {
+                document.getElementById('content').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } else {
+                showAlert('Failed to fetch categories', 'danger');
+            }
+        }
+
+        // Function to generate the create category form
+        function createCategoryForm() {
+            document.getElementById('content').innerHTML = `
+                <h2>Create Category</h2>
+                <form onsubmit="createCategory(event)">
+                    <div class="mb-3">
+                        <label for="categoryName" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="categoryName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="categoryDescription" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="categoryDescription">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </form>
+            `;
+        }
+
+        // Function to handle category creation
+        async function createCategory(event) {
+            event.preventDefault();
+            const token = localStorage.getItem('token');
+            const name = document.getElementById('categoryName').value;
+            const description = document.getElementById('categoryDescription').value;
+
+            const response = await fetch(`${baseURL}/v1/categories/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'name': name,
+                    'description': description
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                showAlert('Category created successfully!', 'success');
+            } else {
+                showAlert('Creation failed: ' + data.detail, 'danger');
+            }
+        }
+
+        // Function to get articles and display them with improved UI
+        async function getArticles() {
+            const response = await fetch(`${baseURL}/v1/articles/`);
+            const data = await response.json();
+            if (response.ok) {
+                let articlesHtml = '<h2>Articles</h2>';
+                articlesHtml += '<div class="row">';
+
+                data.forEach(article => {
+                    articlesHtml += `
+                        <div class="col-md-4">
+                            <div class="card mb-4 shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title text-truncate">${article.title}</h5>
+                                    <p class="card-text text-truncate">${article.text.substring(0, 100)}...</p>
+                                    <p class="card-text"><small class="text-muted">Category: ${article.category_id}</small></p>
+                                    <p class="card-text"><small class="text-muted">Published: ${article.is_published ? 'Yes' : 'No'}</small></p>
+                                    <button class="btn btn-primary" onclick="viewArticle(${article.id})">Read More</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                articlesHtml += '</div>';
+                document.getElementById('content').innerHTML = articlesHtml;
+            } else {
+                showAlert('Failed to fetch articles', 'danger');
+            }
+        }
+
+        // Function to view an article
+        async function viewArticle(articleId) {
+            try {
+                const response = await fetch(`${baseURL}/v1/articles/${articleId}`);
+                const article = await response.json();
+                if (response.ok) {
+                    document.getElementById('content').innerHTML = `
+                        <div class="card">
+                            <div class="card-body">
+                                <h3 class="card-title">${article.title}</h3>
+                                <p class="card-text">${article.text}</p>
+                                <p class="card-text"><small class="text-muted">Category: ${article.category_id}</small></p>
+                                <p class="card-text"><small class="text-muted">Published: ${article.is_published ? 'Yes' : 'No'}</small></p>
+                                <button class="btn btn-secondary" onclick="getArticles()">Back to Articles</button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    showAlert('Failed to fetch the article', 'danger');
+                }
+            } catch (error) {
+                showAlert(`Error: ${error.message}`, 'danger');
+            }
+        }
+
+        // Function to generate the create article form with dynamic categories
+        async function createArticleForm() {
+            const response = await fetch(`${baseURL}/v1/categories/`);
+            const categories = await response.json();
+            if (!response.ok) {
+                showAlert('Failed to fetch categories', 'danger');
+                return;
+            }
+
+            let categoriesOptions = '';
+            categories.forEach(category => {
+                categoriesOptions += `<option value="${category.id}">${category.name}</option>`;
+            });
+
+            document.getElementById('content').innerHTML = `
+                <h2>Create Article</h2>
+                <form onsubmit="createArticle(event)">
+                    <div class="mb-3">
+                        <label for="articleTitle" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="articleTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="articleText" class="form-label">Text</label>
+                        <textarea class="form-control" id="articleText" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="articleCategory" class="form-label">Category</label>
+                        <select class="form-control" id="articleCategory" required>
+                            ${categoriesOptions}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="isPublished" class="form-check-label">Published</label>
+                        <input type="checkbox" class="form-check-input" id="isPublished">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </form>
+            `;
+        }
+
+        // Function to handle article creation
+        async function createArticle(event) {
+            event.preventDefault();
+            const token = localStorage.getItem('token');
+            const title = document.getElementById('articleTitle').value;
+            const text = document.getElementById('articleText').value;
+            const category_id = document.getElementById('articleCategory').value;
+            const is_published = document.getElementById('isPublished').checked;
+
+            const response = await fetch(`${baseURL}/v1/articles/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'title': title,
+                    'text': text,
+                    'category_id': category_id,
+                    'is_published': is_published
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                showAlert('Article created successfully!', 'success');
+            } else {
+                showAlert('Creation failed: ' + data.detail, 'danger');
+            }
+        }
+
+        // Function to generate the search articles form
+        function searchArticlesForm() {
+            document.getElementById('content').innerHTML = `
+                <h2>Search Articles</h2>
+                <form onsubmit="searchArticles(event)">
+                    <div class="mb-3">
+                        <label for="searchQuery" class="form-label">Search Query</label>
+                        <input type="text" class="form-control" id="searchQuery" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Search</button>
+                </form>
+            `;
+        }
+
+        // Function to handle article search
+        async function searchArticles(event) {
+            event.preventDefault();
+            const query = document.getElementById('searchQuery').value;
+
+            const response = await fetch(`${baseURL}/v1/search/articles/?search=${query}`);
+            const data = await response.json();
+            if (response.ok) {
+                document.getElementById('content').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } else {
+                showAlert('Search failed: ' + data.detail, 'danger');
+            }
+        }
+
+        // Function to handle logout
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            document.getElementById('user-name').textContent = 'N/A';
+            showAlert('Logged out successfully!', 'success');
+            loginForm();
+        }
+
+        // Load login form on page load
+        loginForm();
+
     </script>
 </body>
 </html>
