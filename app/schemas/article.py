@@ -31,6 +31,11 @@ class ArticleResponse(ArticleBase):
     updated_at: datetime
     views: int = 0
 
+class SimplifiedArticleResponse(BaseModel):
+    id: int
+    title: str
+
+
     
     class Config:
         from_attributes = True

@@ -1,11 +1,12 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from app.models.mod import Article, Category, User
+from app.models.mod import Article, Category, Like, User
 from app.database.database import get_db
-from app.schemas.article import ArticleCreate, ArticleUpdate, ArticleResponse
+from app.schemas.article import ArticleCreate, ArticleUpdate, ArticleResponse, SimplifiedArticleResponse
 from app.routers.auth import get_current_active_user
 
 router = APIRouter()
@@ -136,3 +137,50 @@ async def delete_article(article_id: int, db: Session = Depends(get_db), current
     db.delete(article)
     db.commit()
     return {"detail": "Article deleted successfully"}
+
+@router.get("/articles/most-liked", response_model=SimplifiedArticleResponse)
+async def get_most_liked_article(db: Session = Depends(get_db)):
+    most_liked_article = (
+        db.query(Article)
+        .join(Like, Like.article_id == Article.id)
+        .group_by(Article.id)
+        .order_by(func.count(Like.id).desc())
+        .first()
+    )
+
+    if not most_liked_article:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No articles found")
+
+    return most_liked_article
+
+@router.get("/articles/latest", response_model=List[ArticleResponse])
+async def get_latest_articles(limit: int = 3, db: Session = Depends(get_db)):
+    """
+    Get the latest articles ordered by creation date.
+    """
+    try:
+        articles = (
+            db.query(Article)
+            .order_by(Article.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        if not articles:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No articles found")
+
+        return articles
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/articles/latest/a", response_model=List[SimplifiedArticleResponse])
+async def get_latest_articles(limit: int = 3, db: Session = Depends(get_db)):
+    articles = db.query(Article).order_by(Article.created_at.desc()).limit(limit).all()
+    print(articles)  # Add this to inspect the data
+    return articles
+
+
+
+
+

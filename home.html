@@ -43,18 +43,21 @@
             max-height: calc(100vh - 150px);
             overflow-y: auto;
         }
-        .category-list {
+        .category-list, .article-list, .comment-list {
             max-height: 300px;
             overflow-y: auto;
             padding: 0;
         }
-        .category-item {
+        .list-item-link {
             padding: 10px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
+            display: block;
+            text-decoration: none;
+            color: #2b1677a5;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
-        .category-item:hover {
-            background-color: #f4f4f4;
+        .list-item-link:hover {
+            background-color: #e9ecef;
+            color: #0056b3;
         }
         .article-list-item {
             padding: 15px;
@@ -121,15 +124,14 @@
                     <ul class="list-group category-list mb-3" id="categoryList"></ul>
                     
                     <h5>Last Three New Comments</h5>
-                    <ul class="list-group mb-3" id="lastThreeComments"></ul>
+                    <ul class="list-group comment-list mb-3" id="lastThreeComments"></ul>
                     
                     <h5>Last Three Articles</h5>
-                    <ul class="list-group mb-3" id="lastThreeArticles"></ul>
+                    <ul class="list-group article-list mb-3" id="lastThreeArticles"></ul>
                     
                     <h5>Most Liked Article</h5>
                     <div class="list-group" id="mostLikedArticle"></div>
                 </div>
-                
             </div>
             <div class="col-md-9">
                 <div id="main-content">
@@ -205,11 +207,15 @@
                 const categoryList = document.getElementById('categoryList');
                 categoryList.innerHTML = '';
                 categories.forEach(category => {
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item category-item';
-                    li.textContent = category.name;
-                    li.onclick = () => loadArticlesByCategory(category.id);
-                    categoryList.appendChild(li);
+                    const link = document.createElement('a');
+                    link.className = 'list-item-link';
+                    link.textContent = category.name;
+                    link.href = '#';
+                    link.onclick = (e) => {
+                        e.preventDefault();
+                        loadArticlesByCategory(category.id);
+                    };
+                    categoryList.appendChild(link);
                 });
             } else {
                 alert('Failed to load categories');
@@ -219,7 +225,7 @@
         // Function to load all articles and display them on the homepage
         async function loadArticles() {
             try {
-                const response = await fetch(`${baseURL}/v1/articles/`);
+                const response = await fetch(`${baseURL}/v1/search/articles?search=`);
                 const articles = await response.json();
                 if (response.ok) {
                     renderArticleList(articles);
@@ -234,12 +240,21 @@
 
         // Function to load articles by category
         async function loadArticlesByCategory(categoryId) {
-            const response = await fetch(`${baseURL}/v1/articles/all?category_id=${categoryId}`);
-            const articles = await response.json();
-            if (response.ok) {
-                renderArticleList(articles);
-            } else {
-                alert('Failed to load articles for this category');
+            try {
+                const response = await fetch(`${baseURL}/v1/articles/all?category_id=${categoryId}`);
+                const articles = await response.json();
+                if (response.ok) {
+                    const articlesList = document.getElementById('articlesList');
+                    const articleDetail = document.getElementById('articleDetail');
+                    articlesList.style.display = 'block';
+                    articleDetail.style.display = 'none';
+                    renderArticleList(articles);
+                } else {
+                    alert('Failed to load articles for this category');
+                }
+            } catch (error) {
+                console.error('Error loading articles by category:', error);
+                alert('An error occurred while loading articles for this category.');
             }
         }
 
@@ -280,7 +295,6 @@
             articlesList.innerHTML = '';
             articleDetail.style.display = 'none';
 
-            // Fetch categories to map category IDs to names
             const categoriesResponse = await fetch(`${baseURL}/v1/categories/`);
             const categories = await categoriesResponse.json();
             const categoryMap = categories.reduce((map, category) => {
@@ -303,7 +317,7 @@
                     <h5>${article.title}</h5>
                     <p>${article.text.substring(0, 100)}...</p>
                     <small>Category: ${categoryMap[article.category_id]} | Date: ${new Date(article.created_at).toLocaleDateString()} | Likes: ${likes.length} | Comments: ${comments.length}</small>
-                    <button class="btn btn-primary btn-sm mt-2" onclick="viewArticle(${article.id})">Read More</button>
+                    <a href="#" class="btn btn-primary btn-sm mt-2" onclick="viewArticle(${article.id})">Read More</a>
                 `;
                 articlesList.appendChild(div);
             }
@@ -312,7 +326,6 @@
         // Function to view article details
         async function viewArticle(articleId) {
             try {
-                // Fetch the article details
                 const articleResponse = await fetch(`${baseURL}/v1/articles/${articleId}`);
                 const article = await articleResponse.json();
                 
@@ -321,7 +334,6 @@
                     return;
                 }
 
-                // Fetch the categories and map them
                 const categoriesResponse = await fetch(`${baseURL}/v1/categories/`);
                 const categories = await categoriesResponse.json();
                 const categoryMap = categories.reduce((map, category) => {
@@ -329,13 +341,11 @@
                     return map;
                 }, {});
 
-                // Fetch likes and comments count
                 const likesResponse = await fetch(`${baseURL}/v1/like/articles/${article.id}/likes/`);
                 const likes = await likesResponse.json();
                 const commentsResponse = await fetch(`${baseURL}/v1/comment/articles/${article.id}/comments/`);
                 const comments = await commentsResponse.json();
 
-                // Render the article detail view
                 const articlesList = document.getElementById('articlesList');
                 const articleDetail = document.getElementById('articleDetail');
                 articlesList.style.display = 'none';
@@ -476,7 +486,7 @@
         // Function to load the last three articles and their comments
         async function loadLastThreeArticlesWithComments() {
             try {
-                const response = await fetch(`${baseURL}/v1/articles/?limit=3`);
+                const response = await fetch(`${baseURL}/v1/articles/latest/a?limit=3`);
                 const articles = await response.json();
 
                 if (response.ok) {
@@ -486,23 +496,29 @@
                     lastThreeComments.innerHTML = '';
 
                     for (const article of articles) {
-                        // Display the article title
-                        const articleLi = document.createElement('li');
-                        articleLi.className = 'list-group-item';
-                        articleLi.textContent = article.title;
-                        articleLi.onclick = () => viewArticle(article.id);
-                        lastThreeArticles.appendChild(articleLi);
+                        const articleLink = document.createElement('a');
+                        articleLink.className = 'list-item-link';
+                        articleLink.textContent = article.title;
+                        articleLink.href = '#';
+                        articleLink.onclick = (e) => {
+                            e.preventDefault();
+                            viewArticle(article.id);
+                        };
+                        lastThreeArticles.appendChild(articleLink);
 
-                        // Fetch the comments for each article
                         const commentsResponse = await fetch(`${baseURL}/v1/comment/articles/${article.id}/comments/`);
                         const comments = await commentsResponse.json();
 
                         if (commentsResponse.ok && comments.length > 0) {
-                            // Display the latest comment from the article
-                            const commentLi = document.createElement('li');
-                            commentLi.className = 'list-group-item';
-                            commentLi.textContent = `Comment on "${article.title}": ${comments[comments.length - 1].text}`;
-                            lastThreeComments.appendChild(commentLi);
+                            const commentLink = document.createElement('a');
+                            commentLink.className = 'list-item-link';
+                            commentLink.textContent = `Comment on "${article.title}": ${comments[comments.length - 1].text}`;
+                            commentLink.href = '#';
+                            commentLink.onclick = (e) => {
+                                e.preventDefault();
+                                viewArticle(article.id);
+                            };
+                            lastThreeComments.appendChild(commentLink);
                         }
                     }
                 } else {
@@ -524,14 +540,16 @@
                     const mostLikedArticleDiv = document.getElementById('mostLikedArticle');
                     mostLikedArticleDiv.innerHTML = '';
 
-                    const article = articles[0];
+                    const articleLink = document.createElement('a');
+                    articleLink.className = 'list-item-link';
+                    articleLink.innerHTML = `<strong>${articles[0].title}</strong> (${articles[0].likes_count} likes)`;
+                    articleLink.href = '#';
+                    articleLink.onclick = (e) => {
+                        e.preventDefault();
+                        viewArticle(articles[0].id);
+                    };
 
-                    const articleDiv = document.createElement('div');
-                    articleDiv.className = 'list-group-item';
-                    articleDiv.innerHTML = `<strong>${article.title}</strong> (${article.likes_count} likes)`;
-                    articleDiv.onclick = () => viewArticle(article.id);
-
-                    mostLikedArticleDiv.appendChild(articleDiv);
+                    mostLikedArticleDiv.appendChild(articleLink);
                 } else {
                     alert('Failed to load the most liked article');
                 }
@@ -603,7 +621,6 @@
                 document.getElementById('loginModal').classList.remove('show'); // Close the modal
                 document.querySelector('.modal-backdrop').remove(); // Remove the backdrop
                 updateNavbar(); // Update navbar after login
-               // alert('Login successful!');
             } catch (error) {
                 alert(`Login failed: ${error.message}`);
             }
@@ -641,7 +658,6 @@
                 alert(`Registration failed: ${error.message}`);
             }
         });
-        
 
         // On page load
         document.addEventListener('DOMContentLoaded', function() {
