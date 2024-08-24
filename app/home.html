@@ -199,7 +199,7 @@
     </div>
 
     <footer>
-        <img src="/blotch/app/static/photo.jpg" alt="Profile Image">
+        <img src="/static/photo.jpg" alt="Profile Image">
         <div>
             <a href="https://www.instagram.com/ibrahimihssan1/" target="_blank">Instagram</a> |
             <a href="https://www.youtube.com/@ibrahim-ihssan" target="_blank">YouTube</a> |
@@ -265,7 +265,7 @@
 
 
     <script>
-        const baseURL = "http://127.0.0.1:8001";
+        const baseURL = "https://48d4-88-230-92-78.ngrok-free.app";
 
         // Function to load categories
         async function loadCategories() {
@@ -702,7 +702,7 @@
             const email = document.getElementById('registerEmail').value;
             const username = document.getElementById('registerUsername').value;
             const password = document.getElementById('registerPassword').value;
-
+        
             try {
                 const response = await fetch(`${baseURL}/v1/register`, {
                     method: 'POST',
@@ -715,19 +715,31 @@
                         'password': password
                     })
                 });
-
+        
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.detail || 'Registration failed');
                 }
-
-                document.getElementById('registerModal').classList.remove('show'); // Close the modal
-                document.querySelector('.modal-backdrop').remove(); // Remove the backdrop
-                alert('Registration successful! Please log in.');
+        
+                const data = await response.json();
+        
+                // Store the token and user information in localStorage
+                localStorage.setItem('token', data.access_token);
+                localStorage.setItem('username', data.user.username);
+        
+                // Update the navbar to reflect the logged-in status
+                updateNavbar();
+        
+                // Close the registration modal
+                document.getElementById('registerModal').classList.remove('show');
+                document.querySelector('.modal-backdrop').remove();
+        
+                alert('Registration successful! You are now logged in.');
             } catch (error) {
                 alert(`Registration failed: ${error.message}`);
             }
         });
+        
 
         // On page load
         document.addEventListener('DOMContentLoaded', function() {

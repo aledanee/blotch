@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Text, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 
 import enum
 
@@ -20,6 +20,10 @@ class UserResponse(BaseModel):
     created_at: datetime  # Correctly annotate the type as 'datetime'
     disabled: bool  # This is already correct
 
+class UserWithTokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+    user: UserResponse
 
 class Token(BaseModel):
     access_token: str
@@ -35,6 +39,12 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
 
+
+    @validator('password')
+    def password_length(cls, value):
+        if len(value) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        return value
 
 class UserRole(enum.Enum):
     owner = "owner"

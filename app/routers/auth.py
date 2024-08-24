@@ -1,3 +1,4 @@
+import dns.resolver
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
@@ -8,7 +9,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from typing import Annotated, List, Optional, Union
 from uuid import uuid4
 
-from app.models.mod import RefreshToken, User, Token, TokenData, UserCreate, UserResponse, UserRole, UserUpdate
+from app.models.mod import RefreshToken, User, Token, TokenData, UserCreate, UserResponse, UserRole, UserUpdate, UserWithTokenResponse
 from app.database.database import get_db
 
 # JWT and OAuth2 configurations
@@ -180,8 +181,47 @@ def create_user(db: Session, user: UserCreate):
     db.refresh(db_user)
     return db_user
 
-@router.post("/register", response_model=UserResponse)
+
+
+
+def validate_email_domain(email: str) -> bool:
+    domain = email.split('@')[1]
+    try:
+        mx_records = dns.resolver.resolve(domain, 'MX')
+        return True if mx_records else False
+    except dns.resolver.NoAnswer:
+        return False
+
+# @router.post("/register", response_model=UserResponse)
+# async def register_user(user: UserCreate, db: Session = Depends(get_db)):
+#     # Validate email domain existence
+#     if not validate_email_domain(user.email):
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail="Email domain does not exist",
+#         )
+
+#     # Check if the username or email already exists
+#     existing_user = db.query(User).filter((User.username == user.username) | (User.email == user.email)).first()
+#     if existing_user:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail="Username or email already registered",
+#         )
+
+#     # Create the new user
+#     new_user = create_user(db, user)
+#     return new_user
+    
+@router.post("/register", response_model=UserWithTokenResponse)
 async def register_user(user: UserCreate, db: Session = Depends(get_db)):
+    # Validate email domain existence
+    if not validate_email_domain(user.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email domain does not exist",
+        )
+
     # Check if the username or email already exists
     existing_user = db.query(User).filter((User.username == user.username) | (User.email == user.email)).first()
     if existing_user:
@@ -190,8 +230,27 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)):
             detail="Username or email already registered",
         )
 
+    # Create the new user
     new_user = create_user(db, user)
-    return new_user
+
+    # Generate JWT token for the new user
+    access_token = create_access_token(data={"sub": new_user.username})
+
+    # Return the new user along with the token
+    return {"access_token": access_token, "token_type": "bearer", "user": new_user}
+# @router.post("/register", response_model=UserResponse)
+# async def register_user(user: UserCreate, db: Session = Depends(get_db)):
+#     # Check if the username or email already exists
+#     existing_user = db.query(User).filter((User.username == user.username) | (User.email == user.email)).first()
+#     if existing_user:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail="Username or email already registered",
+#         )
+
+#     # Create the new user
+#     new_user = create_user(db, user)
+#     return new_user
 
 
 
